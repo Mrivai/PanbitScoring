@@ -19,13 +19,27 @@ export default function App() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isStarting, setIsStarting] = useState(false);
 
   const webcamRef = useRef<Webcam>(null);
 
-  // Landing page no longer times out, user must click 'Mulai'
-  useEffect(() => {
-    // Optionally run initialization logic here
-  }, []);
+  const handleStartApp = async () => {
+    setIsStarting(true);
+    try {
+      // Meminta izin kamera sesegera mungkin di landing page
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        // Segera hentikan akses kamera setelah izin didapat untuk sementara
+        stream.getTracks().forEach(track => track.stop());
+      }
+    } catch (error) {
+      console.error('Camera permission error:', error);
+      alert('Izin kamera diperlukan untuk memindai lembar jawaban. Mohon izinkan akses kamera pada browser Anda agar aplikasi dapat berfungsi optimal.');
+    } finally {
+      setIsStarting(false);
+      setAppState('setup1');
+    }
+  };
 
   const capturePhoto = useCallback(() => {
     if (webcamRef.current) {
@@ -189,11 +203,18 @@ Tugas Anda:
 
               <div className="p-6 bg-white sticky bottom-0 z-10 border-t border-slate-100 shadow-[0_-10px_20px_-15px_rgba(0,0,0,0.05)]">
                 <button
-                  onClick={() => setAppState('setup1')}
-                  className="w-full bg-blue-600 text-white font-semibold py-4 rounded-xl hover:bg-blue-700 transition flex items-center justify-center space-x-2 shadow-lg shadow-blue-200/50"
+                  onClick={handleStartApp}
+                  disabled={isStarting}
+                  className="w-full bg-blue-600 text-white font-semibold py-4 rounded-xl hover:bg-blue-700 disabled:bg-blue-400 transition flex items-center justify-center space-x-2 shadow-lg shadow-blue-200/50"
                 >
-                  <span>Mulai Menilai Sekarang</span>
-                  <ChevronRight size={18} />
+                  {isStarting ? (
+                    <RefreshCcw className="animate-spin w-5 h-5 mx-auto" />
+                  ) : (
+                    <>
+                      <span>Mulai Menilai Sekarang</span>
+                      <ChevronRight size={18} />
+                    </>
+                  )}
                 </button>
                 <p className="text-center text-xs text-slate-400 mt-5 font-medium">&copy; {new Date().getFullYear()} TU PANBIT. All rights reserved.</p>
               </div>
