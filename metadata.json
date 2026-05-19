@@ -1,0 +1,6 @@
+{
+  "name": "Panbit Automated Scoring System",
+  "description": "Aplikasi SPA untuk menilai hasil ujian siswa secara otomatis menggunakan model AI multimodal Qwen2-VL.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
