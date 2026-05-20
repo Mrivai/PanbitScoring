@@ -18,6 +18,7 @@ export default function App() {
   const [answerKey, setAnswerKey] = useState('');
   const [pointRules, setPointRules] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [isStarting, setIsStarting] = useState(false);
@@ -39,46 +40,41 @@ export default function App() {
     if (webcamRef.current) {
       const imageSrc = webcamRef.current.getScreenshot();
       if (imageSrc) {
-        // Prepare to autocrop
+        // Just apply enhancements to the captured frame, do not autocrop
         const processImage = async () => {
           try {
             const img = new Image();
             img.src = imageSrc;
             await new Promise((resolve) => { img.onload = resolve; });
             
-            const result = await scanDocument(img, { 
-              mode: 'extract',
-              output: 'canvas',
-              maxProcessingDimension: 1920
-            });
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = img.width;
+            finalCanvas.height = img.height;
+            const ctx = finalCanvas.getContext('2d');
+            if (ctx) ctx.drawImage(img, 0, 0);
             
-            if (result.success && result.output) {
-              const canvas = result.output as HTMLCanvasElement;
-              
-              // Enhance text visibility (Grayscale & high contrast)
-              const enhancedCanvas = document.createElement('canvas');
-              enhancedCanvas.width = canvas.width;
-              enhancedCanvas.height = canvas.height;
-              const ctx = enhancedCanvas.getContext('2d');
-              
-              if (ctx) {
-                // Apply a softer filter to avoid washing out text while remaining clear
-                ctx.filter = 'grayscale(100%) contrast(120%) brightness(105%)';
-                ctx.drawImage(canvas, 0, 0);
-                // Use maximum quality
-                const croppedSrc = enhancedCanvas.toDataURL("image/jpeg", 1.0);
-                setPhotos(prev => [...prev, croppedSrc]);
-              } else {
-                const croppedSrc = canvas.toDataURL("image/jpeg", 1.0);
-                setPhotos(prev => [...prev, croppedSrc]);
-              }
-              return;
+            // Enhance text visibility (Grayscale & high contrast)
+            const enhancedCanvas = document.createElement('canvas');
+            enhancedCanvas.width = finalCanvas.width;
+            enhancedCanvas.height = finalCanvas.height;
+            const eCtx = enhancedCanvas.getContext('2d');
+            
+            if (eCtx) {
+              // Apply a softer filter to avoid washing out text while remaining clear
+              eCtx.filter = 'grayscale(100%) contrast(120%) brightness(105%)';
+              eCtx.drawImage(finalCanvas, 0, 0);
+              // Use maximum quality
+              const outputSrc = enhancedCanvas.toDataURL("image/jpeg", 1.0);
+              setPhotos(prev => [...prev, outputSrc]);
+            } else {
+              const outputSrc = finalCanvas.toDataURL("image/jpeg", 1.0);
+              setPhotos(prev => [...prev, outputSrc]);
             }
           } catch (err) {
-            console.error("Autocrop error:", err);
+            console.error("Processing error:", err);
+            // Fallback to uncropped raw if everything else fails
+            setPhotos(prev => [...prev, imageSrc]);
           }
-          // Fallback to uncropped
-          setPhotos(prev => [...prev, imageSrc]);
         };
         
         processImage();
@@ -375,8 +371,8 @@ Contoh format sukses:
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans text-slate-800">
-      <div className="w-full max-w-md bg-white min-h-screen shadow-xl relative overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-slate-100 md:p-6 lg:p-8 flex items-center justify-center font-sans text-slate-800">
+      <div className="w-full max-w-5xl mx-auto bg-white min-h-screen md:min-h-[90vh] md:rounded-3xl md:shadow-2xl relative overflow-hidden flex flex-col">
         {/* LANDING PAGE */}
         <AnimatePresence>
           {appState === 'landing' && (
@@ -393,54 +389,54 @@ Contoh format sukses:
                 </div>
               </div>
 
-              <div className="px-6 flex-1 flex flex-col justify-center mb-8">
-                <div className="inline-block px-3 py-1 bg-blue-50 text-blue-600 text-xs font-semibold rounded-full mb-6 w-max">
+              <div className="px-6 md:px-12 lg:px-20 flex-1 flex flex-col justify-center mb-8 max-w-4xl mx-auto w-full">
+                <div className="inline-block px-3 py-1 bg-blue-50 text-blue-600 text-xs md:text-sm font-semibold rounded-full mb-6 w-max">
                   Powered by Qwen2-VL AI
                 </div>
-                <h1 className="text-4xl font-extrabold text-slate-900 leading-tight mb-4">
-                  Penilaian Ujian <br />
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-tight mb-4">
+                  Penilaian Ujian <br className="md:hidden" />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Otomatis & Cerdas</span>
                 </h1>
-                <p className="text-slate-500 mb-10 leading-relaxed text-sm">
+                <p className="text-slate-500 mb-10 leading-relaxed text-sm md:text-base max-w-2xl">
                   Tinggalkan cara manual. Evaluasi puluhan lembar jawaban siswa dalam hitungan detik menggunakan teknologi AI Vision tercanggih.
                 </p>
 
                 <div className="space-y-6 mb-10">
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0 w-12 h-12 bg-blue-50 flex items-center justify-center rounded-xl mr-4">
-                      <Clock className="w-6 h-6 text-blue-600" />
+                  <div className="flex items-start md:items-center">
+                    <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 bg-blue-50 flex items-center justify-center rounded-xl mr-4 md:mr-6">
+                      <Clock className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">Hemat Waktu Penilaian</h3>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">Periksa puluhan hasil ujian sekilas pandang tanpa harus mengecek satu per satu secara manual.</p>
+                      <h3 className="text-sm md:text-base font-bold text-slate-900">Hemat Waktu Penilaian</h3>
+                      <p className="text-xs md:text-sm text-slate-500 mt-1 leading-relaxed max-w-md">Periksa puluhan hasil ujian sekilas pandang tanpa harus mengecek satu per satu secara manual.</p>
                     </div>
                   </div>
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0 w-12 h-12 bg-indigo-50 flex items-center justify-center rounded-xl mr-4">
-                      <Brain className="w-6 h-6 text-indigo-600" />
+                  <div className="flex items-start md:items-center">
+                    <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 bg-indigo-50 flex items-center justify-center rounded-xl mr-4 md:mr-6">
+                      <Brain className="w-6 h-6 md:w-8 md:h-8 text-indigo-600" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">Akurat & Terstruktur</h3>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">Pilihan Ganda dan Essay dapat dinilai secara presisi langsung dari hasil jepretan kamera.</p>
+                      <h3 className="text-sm md:text-base font-bold text-slate-900">Akurat & Terstruktur</h3>
+                      <p className="text-xs md:text-sm text-slate-500 mt-1 leading-relaxed max-w-md">Pilihan Ganda dan Essay dapat dinilai secara presisi langsung dari hasil jepretan kamera.</p>
                     </div>
                   </div>
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0 w-12 h-12 bg-emerald-50 flex items-center justify-center rounded-xl mr-4">
-                      <ShieldCheck className="w-6 h-6 text-emerald-600" />
+                  <div className="flex items-start md:items-center">
+                    <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 bg-emerald-50 flex items-center justify-center rounded-xl mr-4 md:mr-6">
+                      <ShieldCheck className="w-6 h-6 md:w-8 md:h-8 text-emerald-600" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">Aturan Fleksibel</h3>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">Sesuaikan format nilai, bobot, dan kunci jawaban mandiri sesuai standar kurikulum Anda.</p>
+                      <h3 className="text-sm md:text-base font-bold text-slate-900">Aturan Fleksibel</h3>
+                      <p className="text-xs md:text-sm text-slate-500 mt-1 leading-relaxed max-w-md">Sesuaikan format nilai, bobot, dan kunci jawaban mandiri sesuai standar kurikulum Anda.</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6 bg-white sticky bottom-0 z-10 border-t border-slate-100 shadow-[0_-10px_20px_-15px_rgba(0,0,0,0.05)]">
+              <div className="p-6 md:px-12 lg:px-20 bg-white sticky bottom-0 z-10 border-t border-slate-100 shadow-[0_-10px_20px_-15px_rgba(0,0,0,0.05)]">
                 <button
                   onClick={handleStartApp}
                   disabled={isStarting}
-                  className="w-full bg-blue-600 text-white font-semibold py-4 rounded-xl hover:bg-blue-700 disabled:bg-blue-400 transition flex items-center justify-center space-x-2 shadow-lg shadow-blue-200/50"
+                  className="w-full md:max-w-md mx-auto bg-blue-600 text-white font-semibold py-4 md:py-5 rounded-xl md:rounded-2xl hover:bg-blue-700 disabled:bg-blue-400 transition flex items-center justify-center space-x-2 shadow-lg shadow-blue-200/50 text-base md:text-lg"
                 >
                   {isStarting ? (
                     <RefreshCcw className="animate-spin w-5 h-5 mx-auto" />
@@ -459,17 +455,17 @@ Contoh format sukses:
 
         {/* APP HEADER */}
         {appState !== 'landing' && appState !== 'camera' && (
-          <header className="bg-white px-6 py-4 flex items-center border-b border-slate-100 z-20 shrink-0">
-            <CheckCircle className="w-6 h-6 text-blue-600 mr-2" />
-            <h1 className="font-bold text-slate-900 text-lg tracking-tight flex-1">
-              Panbit <span className="font-normal text-slate-500 text-sm">Automated Scoring</span>
+          <header className="bg-white px-6 md:px-10 lg:px-12 py-4 md:py-6 flex items-center border-b border-slate-100 z-20 shrink-0">
+            <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-blue-600 mr-2 md:mr-3" />
+            <h1 className="font-bold text-slate-900 text-lg md:text-xl tracking-tight flex-1">
+              Panbit <span className="font-normal text-slate-500 text-sm md:text-base">Automated Scoring</span>
             </h1>
           </header>
         )}
 
         {/* SETUP PROGRESS BAR (shows during setup steps) */}
         {(appState === 'setup1' || appState === 'setup2') && (
-          <div className="px-6 pt-5 pb-4 bg-white border-b border-slate-100 shrink-0 z-10">
+          <div className="px-6 md:px-12 lg:px-16 pt-5 md:pt-8 pb-4 shrink-0 z-10 mx-auto w-full max-w-4xl">
              <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Persiapan Penilaian</span>
                 <span className="text-xs font-medium text-blue-600">Langkah {appState === 'setup1' ? '1' : '2'} / 2</span>
@@ -490,15 +486,15 @@ Contoh format sukses:
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex-1 flex flex-col p-6"
+            className="flex-1 flex flex-col p-6 md:p-12 lg:p-16 mx-auto w-full max-w-4xl"
           >
-            <h2 className="text-xl font-bold mb-4 flex items-center text-slate-800">
+            <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 flex items-center text-slate-800">
               <FileType className="mr-2 text-blue-500" size={24} />
               Answer Key
             </h2>
-            <p className="text-sm text-slate-500 mb-4">Masukkan kunci jawaban untuk soal Pilihan Ganda (PG) dan Essay.</p>
+            <p className="text-sm md:text-base text-slate-500 mb-4 md:mb-6">Masukkan kunci jawaban untuk soal Pilihan Ganda (PG) dan Essay.</p>
             <textarea
-              className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all placeholder:text-slate-400"
+              className="flex-1 min-h-[300px] w-full bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl p-4 md:p-6 text-sm md:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all placeholder:text-slate-400"
               placeholder="Contoh:&#10;PG: 1. A, 2. B, 3. C&#10;Essay: 1. Karena proses fotosintesis... "
               value={answerKey}
               onChange={(e) => setAnswerKey(e.target.value)}
@@ -506,7 +502,7 @@ Contoh format sukses:
             <button 
               onClick={() => setAppState('setup2')}
               disabled={!answerKey.trim()}
-              className="mt-6 w-full bg-blue-600 text-white font-medium py-3.5 rounded-xl disabled:bg-slate-300 disabled:cursor-not-allowed hover:bg-blue-700 transition flex items-center justify-center space-x-2"
+              className="mt-6 w-full md:w-auto md:ml-auto md:px-8 bg-blue-600 text-white font-medium py-3.5 md:py-4 rounded-xl disabled:bg-slate-300 disabled:cursor-not-allowed hover:bg-blue-700 transition flex items-center justify-center space-x-2 text-base md:text-lg"
             >
               <span>Lanjut ke Aturan Poin</span>
               <ChevronRight size={18} />
@@ -519,33 +515,33 @@ Contoh format sukses:
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex-1 flex flex-col p-6"
+            className="flex-1 flex flex-col p-6 md:p-12 lg:p-16 mx-auto w-full max-w-4xl"
           >
-            <h2 className="text-xl font-bold mb-4 flex items-center text-slate-800">
+            <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 flex items-center text-slate-800">
               <CheckCircle className="mr-2 text-blue-500" size={24} />
               Point Rule
             </h2>
-            <p className="text-sm text-slate-500 mb-4">Tetapkan aturan poin untuk masing-masing jenis soal.</p>
+            <p className="text-sm md:text-base text-slate-500 mb-4 md:mb-6">Tetapkan aturan poin untuk masing-masing jenis soal.</p>
             <textarea
-              className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all placeholder:text-slate-400"
+              className="flex-1 min-h-[300px] w-full bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl p-4 md:p-6 text-sm md:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all placeholder:text-slate-400"
               placeholder="Contoh:&#10;PG: Bener = 5, Salah = 0&#10;Essay: Bobot maksimal 20 per soal"
               value={pointRules}
               onChange={(e) => setPointRules(e.target.value)}
             />
-            <div className="flex space-x-3 mt-6">
+            <div className="flex space-x-3 mt-6 md:mt-8 md:justify-end">
               <button 
                 onClick={() => setAppState('setup1')}
-                className="w-1/3 bg-slate-100 text-slate-600 font-medium py-3.5 rounded-xl hover:bg-slate-200 transition"
+                className="w-1/3 md:w-auto md:px-8 bg-slate-100 text-slate-600 font-medium py-3.5 md:py-4 rounded-xl hover:bg-slate-200 transition text-base md:text-lg"
               >
                 Kembali
               </button>
               <button 
                 onClick={() => setAppState('camera')}
                 disabled={!pointRules.trim()}
-                className="w-2/3 bg-blue-600 text-white font-medium py-3.5 rounded-xl disabled:bg-slate-300 disabled:cursor-not-allowed hover:bg-blue-700 transition flex items-center justify-center space-x-2"
+                className="w-2/3 md:w-auto md:px-12 bg-blue-600 text-white font-medium py-3.5 md:py-4 rounded-xl disabled:bg-slate-300 disabled:cursor-not-allowed hover:bg-blue-700 transition flex items-center justify-center space-x-2 text-base md:text-lg"
               >
                 <span>Mulai Kamera</span>
-                <Camera size={18} />
+                <Camera size={18} className="ml-2" />
               </button>
             </div>
           </motion.div>
@@ -556,7 +552,7 @@ Contoh format sukses:
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 bg-black z-50 flex flex-col"
+            className="absolute inset-0 bg-black z-50 flex flex-col md:rounded-3xl overflow-hidden"
           >
             <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 flex items-center bg-black/60 backdrop-blur-md rounded-full p-1 border border-white/10">
               <button 
@@ -651,38 +647,40 @@ Contoh format sukses:
               )}
             </div>
             
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent pb-10 pt-16 px-6 flex items-center justify-between z-20">
-              <div className="w-16 relative">
-                 {/* Thumbnail Button */}
-                 {photos.length > 0 ? (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent pb-10 pt-16 px-6 flex justify-center z-20">
+              <div className="w-full max-w-4xl flex items-center justify-between">
+                <div className="w-16 md:w-20 relative">
+                   {/* Thumbnail Button */}
+                   {photos.length > 0 ? (
+                     <button 
+                       onClick={() => setAppState('review')}
+                       className="w-14 h-14 md:w-16 md:h-16 rounded-full border-2 border-white/30 overflow-hidden relative"
+                     >
+                       <img src={photos[photos.length - 1]} alt="thumb" className="w-full h-full object-cover" />
+                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <span className="text-white font-bold text-sm md:text-base">{photos.length}</span>
+                       </div>
+                     </button>
+                   ) : (
+                     <div className="w-14 h-14 md:w-16 md:h-16" />
+                   )}
+                </div>
+                
+                <button 
+                  onClick={capturePhoto}
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white/30 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                >
+                  <div className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-full"></div>
+                </button>
+                
+                <div className="w-16 md:w-20 flex justify-end">
                    <button 
-                     onClick={() => setAppState('review')}
-                     className="w-14 h-14 rounded-full border-2 border-white/30 overflow-hidden relative"
+                     onClick={() => setAppState('setup1')}
+                     className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-black/40 border-2 border-white/30 text-white flex items-center justify-center backdrop-blur-md hover:bg-black/60 transition"
                    >
-                     <img src={photos[photos.length - 1]} alt="thumb" className="w-full h-full object-cover" />
-                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">{photos.length}</span>
-                     </div>
+                     <Settings size={24} className="md:w-7 md:h-7" />
                    </button>
-                 ) : (
-                   <div className="w-14 h-14" />
-                 )}
-              </div>
-              
-              <button 
-                onClick={capturePhoto}
-                className="w-20 h-20 rounded-full border-4 border-white/30 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-              >
-                <div className="w-16 h-16 bg-white rounded-full"></div>
-              </button>
-              
-              <div className="w-16 flex justify-end">
-                 <button 
-                   onClick={() => setAppState('setup1')}
-                   className="w-14 h-14 rounded-full bg-black/40 border-2 border-white/30 text-white flex items-center justify-center backdrop-blur-md"
-                 >
-                   <Settings size={24} />
-                 </button>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -693,40 +691,52 @@ Contoh format sukses:
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 flex flex-col bg-slate-50 relative z-30"
+            className="flex-1 flex flex-col bg-slate-50 relative z-30 overflow-hidden"
           >
-            <div className="p-4 bg-white flex items-center justify-between border-b border-slate-100 shadow-sm z-10">
+            <div className="p-4 md:px-8 bg-white flex items-center justify-between border-b border-slate-100 shadow-sm z-10 shrink-0">
               <button 
                 onClick={() => setAppState('camera')}
-                className="text-blue-600 px-2 py-1 font-medium text-sm"
+                className="text-blue-600 px-2 py-1 font-medium text-sm md:text-base hover:bg-blue-50 rounded-lg transition"
               >
                 Tambah Foto
               </button>
-              <span className="font-semibold text-slate-800">Afirmasi Dokumen</span>
-              <div className="w-[85px]"></div>
+              <span className="font-semibold text-slate-800 md:text-lg">Afirmasi Dokumen</span>
+              <div className="w-[85px] md:w-[100px]"></div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <h3 className="text-sm font-medium text-slate-500 mb-2">Foto yang diambil ({photos.length})</h3>
-              {photos.map((photo, idx) => (
-                <div key={idx} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative group">
-                   <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md backdrop-blur-md">Hal {idx + 1}</div>
-                   <button 
-                     onClick={() => handleRemovePhoto(idx)}
-                     className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-1.5 rounded-full backdrop-blur-md transition"
-                     title="Hapus foto ini"
-                   >
-                     <Trash2 size={16} />
-                   </button>
-                   <img src={photo} alt={`Document ${idx}`} className="w-full h-auto object-contain max-h-[300px] bg-slate-100" />
+            <div className="flex-1 overflow-y-auto p-4 md:p-8">
+              <div className="max-w-4xl mx-auto">
+                <h3 className="text-sm md:text-base font-medium text-slate-500 mb-4">Foto yang diambil ({photos.length})</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                  {photos.map((photo, idx) => (
+                    <div key={idx} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative group">
+                       <div className="absolute top-3 left-3 bg-black/60 text-white text-xs md:text-sm px-2.5 py-1 rounded-md backdrop-blur-md z-10">Hal {idx + 1}</div>
+                       <button 
+                         onClick={(e) => { e.stopPropagation(); handleRemovePhoto(idx); }}
+                         className="absolute top-3 right-3 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-full backdrop-blur-md transition opacity-100 sm:opacity-0 sm:group-hover:opacity-100 z-10"
+                         title="Hapus foto ini"
+                       >
+                         <Trash2 size={16} className="md:w-5 md:h-5" />
+                       </button>
+                       <div 
+                         onClick={() => setPreviewPhoto(photo)}
+                         className="cursor-pointer w-full h-48 sm:h-64 relative"
+                       >
+                         <img src={photo} alt={`Document ${idx}`} className="w-full h-full object-cover bg-slate-100" />
+                         <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
+                           <Scan className="text-white opacity-0 group-hover:opacity-100 w-8 h-8 drop-shadow-md transition-opacity" />
+                         </div>
+                       </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
 
-            <div className="p-4 bg-white border-t border-slate-100 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
+            <div className="p-4 md:p-6 bg-white border-t border-slate-100 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] shrink-0">
                <button 
                   onClick={processScoring}
-                  className="w-full bg-blue-600 text-white font-medium py-4 rounded-xl hover:bg-blue-700 transition flex justify-center items-center space-x-2 text-lg shadow-lg shadow-blue-200"
+                  className="w-full max-w-md mx-auto bg-blue-600 text-white font-medium py-4 rounded-xl hover:bg-blue-700 transition flex justify-center items-center space-x-2 md:text-lg shadow-lg shadow-blue-200"
                >
                  <span>Nilai Sekarang</span>
                  <Play size={20} className="fill-white" />
@@ -740,7 +750,7 @@ Contoh format sukses:
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50"
+            className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50 mx-auto w-full max-w-2xl text-center"
           >
             {!errorMessage ? (
               <div className="w-24 h-24 mb-6 relative">
@@ -756,10 +766,10 @@ Contoh format sukses:
               </div>
             )}
 
-            <h2 className="text-xl font-bold text-slate-800 mb-2">
+            <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-2 md:mb-4">
               {errorMessage ? 'Penilaian Gagal' : 'Sedang memproses penilaian..'}
             </h2>
-            <p className="text-slate-500 text-center text-sm max-w-xs">
+            <p className="text-slate-500 text-center text-sm md:text-base max-w-sm md:max-w-md">
               {errorMessage ? 'Silakan periksa kembali foto yang Anda ambil dan coba lagi.' : 'AI sedang menganalisis dokumen dan mencocokkan dengan kunci jawaban & aturan Anda.'}
             </p>
             
@@ -788,28 +798,28 @@ Contoh format sukses:
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex-1 flex flex-col bg-slate-50"
+            className="flex-1 flex flex-col bg-slate-50 md:bg-white"
           >
-            <div className="bg-blue-600 text-white p-6 pt-10 pb-8 flex flex-col items-center text-center rounded-b-[40px] shadow-lg mb-6">
-               <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4 backdrop-blur-md">
-                 <Check size={32} className="text-white" />
+            <div className="bg-blue-600 text-white p-6 md:p-12 pt-10 md:pt-16 pb-8 md:pb-12 flex flex-col items-center text-center md:rounded-b-[60px] rounded-b-[40px] shadow-lg mb-6 max-w-3xl mx-auto w-full">
+               <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 rounded-full flex items-center justify-center mb-4 md:mb-6 backdrop-blur-md">
+                 <Check size={32} className="text-white md:w-10 md:h-10" />
                </div>
-               <p className="text-blue-100 font-medium tracking-wide text-sm uppercase mb-1">Nilai Total</p>
-               <h2 className="text-6xl font-bold tracking-tight mb-2">{scoringResult.total}</h2>
-               <p className="text-blue-100/80 text-sm max-w-[200px]">Gabungan dari seluruh jenis soal</p>
+               <p className="text-blue-100 font-medium tracking-wide text-sm md:text-base uppercase mb-1">Nilai Total</p>
+               <h2 className="text-6xl md:text-8xl font-bold tracking-tight mb-2 md:mb-4">{scoringResult.total}</h2>
+               <p className="text-blue-100/80 text-sm md:text-base max-w-[200px] md:max-w-[300px]">Gabungan dari seluruh jenis soal</p>
             </div>
             
-            <div className="flex-1 px-6 pb-6 overflow-y-auto">
-               <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-4">Rincian Penilaian</h3>
-               <div className="space-y-4">
+            <div className="flex-1 px-6 md:px-12 pb-6 md:pb-12 overflow-y-auto max-w-3xl mx-auto w-full">
+               <h3 className="text-sm md:text-base font-semibold uppercase tracking-wider text-slate-500 mb-4 md:mb-6 text-center md:text-left">Rincian Penilaian</h3>
+               <div className="grid sm:grid-cols-2 gap-4 md:gap-6">
                  {scoringResult.details.map((detail, idx) => (
-                   <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                     <div className="flex justify-between items-center mb-2">
-                       <h4 className="font-bold text-slate-800">{detail.type}</h4>
-                       <span className="text-xl font-bold text-blue-600">{detail.score}</span>
+                   <div key={idx} className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 flex flex-col">
+                     <div className="flex justify-between items-center mb-2 md:mb-4">
+                       <h4 className="font-bold text-slate-800 md:text-lg">{detail.type}</h4>
+                       <span className="text-xl md:text-2xl font-bold text-blue-600">{detail.score}</span>
                      </div>
                      {detail.notes && (
-                       <p className="text-sm text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100 mt-3">
+                       <p className="text-sm md:text-base text-slate-500 bg-slate-50 p-3 md:p-4 rounded-lg md:rounded-xl border border-slate-100 flex-1">
                          {detail.notes}
                        </p>
                      )}
@@ -818,10 +828,10 @@ Contoh format sukses:
                </div>
             </div>
 
-            <div className="p-4 bg-white border-t border-slate-100 mt-auto">
+            <div className="p-4 md:p-8 shrink-0 bg-white md:bg-transparent border-t border-slate-100 md:border-t-0 mt-auto flex justify-center">
                <button 
                   onClick={handleNextStudent}
-                  className="w-full bg-slate-800 text-white font-medium py-4 rounded-xl hover:bg-slate-900 transition shadow-lg shadow-slate-200/50"
+                  className="w-full max-w-md bg-slate-800 text-white font-medium py-4 md:py-5 rounded-xl md:rounded-2xl hover:bg-slate-900 transition shadow-lg shadow-slate-200/50 md:text-lg"
                >
                  Nilai Siswa Berikutnya
                </button>
@@ -835,6 +845,35 @@ Contoh format sukses:
             <p className="text-center text-xs text-slate-400 font-medium">&copy; {new Date().getFullYear()} TU PANBIT. All rights reserved.</p>
           </footer>
         )}
+        
+        {/* IMAGE PREVIEW MODAL */}
+        <AnimatePresence>
+          {previewPhoto && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 md:p-8"
+              onClick={() => setPreviewPhoto(null)}
+            >
+              <button 
+                onClick={() => setPreviewPhoto(null)}
+                className="absolute top-4 right-4 md:top-8 md:right-8 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition backdrop-blur-md"
+              >
+                <XCircle size={32} />
+              </button>
+              <motion.img 
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                src={previewPhoto} 
+                alt="Preview" 
+                className="max-w-full max-h-full object-contain rounded-xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
